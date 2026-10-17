@@ -1,0 +1,91 @@
+import asyncio
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message
+
+# Токен вашего бота, полученный от @BotFather
+TOKEN = "ВАШ_ТОКЕН_БОТА"
+ADMIN_PASSWORD = "testlytixx"
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+# Множество (set) для хранения ID пользователей, которые успешно вошли как админы
+authenticated_admins = set()
+
+# Команда /start
+@dp.message(F.text == "/start")
+async def cmd_start(message: Message):
+    await message.reply(
+        "👋 Привет! Я игровой бот.\n\n"
+        "📜 Доступные команды:\n"
+        "• Напиши **скины** — чтобы посмотреть доступный гардероб.\n"
+        "• Напиши **админка** — чтобы попытаться войти в панель управления."
+    )
+
+# Обработка текстовой команды "скины" (работает в любом регистре)
+@dp.message(F.text.lower() == "скины")
+async def show_skins(message: Message):
+    skins_text = (
+        "🎭 **Магазин игровых скинов:**\n\n"
+        "1. 🔥 Огненный Рыцарь — 500 монет\n"
+        "2. 🧊 Ледяной Маг — 450 монет\n"
+        "3. 🥷 Неоновый Самурай — 700 монет\n"
+        "4. 👑 Кибер-Король — 1200 монет\n\n"
+        "Чтобы купить скин, накопите монеты в игре!"
+    )
+    await message.answer(skins_text, parse_mode="Markdown")
+
+# Обработка команды "админка"
+@dp.message(F.text.lower() == "админка")
+async def admin_panel(message: Message):
+    user_id = message.from_user.id
+    
+    # Если пользователь уже авторизован
+    if user_id in authenticated_admins:
+        await message.answer(
+            "👑 **Панель Администратора**\n\n"
+            "Вы успешно авторизованы! Вам доступны функции:\n"
+            "• /ban — забанить читера\n"
+            "• /give_coins — выдать монеты\n"
+            "• Напиши 'выход' для закрытия сессии."
+        )
+    else:
+        await message.answer("🔒 Доступ ограничен. Введите пароль для входа в админку:")
+
+# Обработка выхода из админки
+@dp.message(F.text.lower() == "выход")
+async def logout_admin(message: Message):
+    user_id = message.from_user.id
+    if user_id in authenticated_admins:
+        authenticated_admins.remove(user_id)
+        await message.answer("🚪 Вы вышли из режима администратора.")
+    else:
+        await message.answer("Вы и так не были авторизованы.")
+
+# Проверка ввода пароля
+@dp.message()
+async def check_password(message: Message):
+    user_id = message.from_user.id
+    
+    # Если пользователь ввел точный пароль
+    if message.text == ADMIN_PASSWORD:
+        if user_id in authenticated_admins:
+            await message.answer("Вы уже вошли в систему!")
+        else:
+            authenticated_admins.add(user_id)
+            await message.answer(
+                "✅ Пароль верный! Доступ получен.\n"
+                "Повторно напишите слово **админка**, чтобы открыть панель управления."
+            )
+    else:
+        # Если это не пароль и не другие команды, просто вежливо отвечаем
+        if user_id not in authenticated_admins:
+            await message.answer("Я не знаю такой команды. Напишите **скины** или **админка**.")
+
+# Запуск процесса опроса (Polling)
+async def main():
+    print("Бот успешно запущен и готов к игре!")
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
